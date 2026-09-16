@@ -2,36 +2,20 @@
 
 Учебный минимум API-автотестов для [Automation Exercise](https://automationexercise.com/api_list).
 
-Это **скелет для обучения**, не полный фреймворк. UI-тестов здесь нет специально: сначала Client → Service → Test, потом Git/GitHub, потом расширение.
-
-Полный проект-образец (API + Selenium UI + login/user lifecycle): [`autotests_automationexercise`](https://github.com/RbBobby/autotests_automationexercise).
-
-| Набор | Технологии | Паттерн | Запуск |
-|-------|------------|---------|--------|
-| **API** (2 теста) | pytest, requests | API Client + Service Object, AAA | `pytest -v` — браузер не нужен |
-
-Тесты ходят на **живой** сайт `automationexercise.com` — нужен интернет.
-
----
-
-## Быстрый старт
+Тесты ходят на живой сайт — нужен интернет. Браузер не нужен.
 
 ```bash
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\Activate.ps1
-
-pip install --upgrade pip
 pip install -r requirements.txt
-pip install -r requirements-dev.txt   # Ruff (опционально)
-
 pytest -v
 ```
 
-Опционально переопределить URL:
+Опционально переопределить URL и таймаут:
 
 ```bash
-cp .env.example .env
-# при необходимости измените API_BASE_URL / API_TIMEOUT
+export API_BASE_URL=https://automationexercise.com/api
+export API_TIMEOUT=30
 ```
 
 ---
@@ -39,93 +23,203 @@ cp .env.example .env
 ## Как устроен проект
 
 ```text
-test  →  ProductsService.get_products()  →  ApiClient.get()  →  automationexercise.com/api
-         ↑ fixture (DI)
-         ↑ response.body (ApiBody dataclass)
-```
-
-- **ApiClient** — единственная точка HTTP (`requests.Session`).
-- **Service** — один класс на эндпоинт, тест не знает URL.
-- **Fixture** — pytest сам собирает `settings → api_client → products_service`.
-- **AAA** — Arrange в fixture, в тесте Act + Assert.
-
-> Сайт часто отвечает **HTTP 200** при ошибке. Смотрите `response.body.response_code`, не только `status_code`. Это проверяет `test_post_products_returns_405`.
-
-```text
 aqa-api-starter/
 ├── api/
-│   ├── client/api_client.py      # ApiClient, ApiResponse
-│   ├── config/settings.py        # .env → Settings
-│   ├── models/responses.py       # Product, Brand, ApiBody
-│   └── services/
-│       ├── products_service.py   # GET/POST /productsList
-│       └── brands_service.py     # GET/PUT /brandsList (тесты — ваша практика)
-├── tests/api/
-│   ├── conftest.py               # fixtures
-│   └── test_products_list.py     # 2 теста — учебный минимум
-├── docs/git-github-lecture.md    # лекция + практикум Git / GitHub
-├── .github/workflows/tests.yml   # CI: lint → api-tests
-├── pytest.ini
-└── requirements.txt
+│   └── client.py          # HTTP-клиент: Session, get/post
+├── tests/
+│   ├── conftest.py        # фикстура api_client
+│   └── test_products.py   # сами тесты
+├── pytest.ini             # где искать тесты, откуда импортировать api
+└── requirements.txt       # pytest + requests
 ```
 
----
+Цепочка вызова:
 
-## Git и GitHub
-
-Практикум: [`docs/git-github-lecture.md`](docs/git-github-lecture.md).
-
-Remote на GitHub **специально не подключён** — это часть лекции. Первый локальный коммит уже есть; дальше вы создаёте репозиторий, `git remote add`, push и PR сами.
-
----
-
-## Что добавить дальше
-
-Не реализуйте всё сразу. Один шаг — одна ветка — один PR (см. лекцию).
-
-- [ ] Тесты на `BrandsService` (сервис уже есть) — GET 200 и PUT 405
-- [ ] `SearchService` + POST `/searchProduct` (с параметром и без)
-- [ ] `@pytest.mark.parametrize` для нескольких поисковых запросов
-- [ ] Более строгие модели / jsonschema на ответ
-- [ ] Allure или другой отчёт кроме pytest-html
-- [ ] Playwright UI — **отдельный следующий репозиторий**, не этот
-
----
-
-## Линтер
-
-```bash
-pip install -r requirements-dev.txt
-ruff check .
-ruff format .
+```text
+тест  →  api_client.get("/productsList")  →  requests.Session  →  automationexercise.com/api
+         ↑ фикстура из conftest.py
 ```
 
-В CI job **Lint (Ruff)** идёт перед API-тестами.
+Роли файлов:
+
+| Файл | Зачем |
+|------|--------|
+| `api/client.py` | Единственное место, где собирается URL и уходит HTTP-запрос |
+| `tests/conftest.py` | Создаёт клиент один раз на прогон и отдаёт его тестам |
+| `tests/test_products.py` | Сценарии: что вызвать и что проверить |
+| `pytest.ini` | `testpaths = tests` и `pythonpath = .`, чтобы работал `from api.client import ApiClient` |
+
+Тест **не** знает полный URL и **не** вызывает `requests.get` сам. Он получает готовый клиент аргументом функции.
 
 ---
 
-## HTML-отчёт
+## Паттерны автотестов
 
-```bash
-mkdir -p reports
-pytest -v --html=reports/api-report.html --self-contained-html
+### 1. AAA — Arrange, Act, Assert
+
+Каждый тест читается в три шага:
+
+1. **Arrange** — подготовка. Здесь её делает фикстура: клиент уже создан, сессия открыта.
+2. **Act** — одно действие: запрос к API.
+3. **Assert** — проверки ответа.
+
+```python
+def test_get_products(api_client):          # Arrange: pytest передал клиент
+    response = api_client.get("/productsList")  # Act
+    body = response.json()
+
+    assert response.status_code == 200          # Assert
+    assert body["responseCode"] == 200
+    assert body["products"]
 ```
 
-Папка `reports/` в `.gitignore`.
+В тесте не должно быть настройки URL, логина «на всякий случай» и второго запроса «заодно». Один тест — одно поведение.
+
+### 2. API Client
+
+Клиент — тонкая обёртка над `requests`. Зачем он, если можно писать `requests.get` прямо в тесте:
+
+- один `base_url` и таймаут на весь проект;
+- тесты пишут путь (`/productsList`), а не полный URL;
+- cookies и keep-alive живут в одной HTTP-сессии;
+- если завтра сменится хост или появится заголовок — правка в одном месте.
+
+```python
+class ApiClient:
+    def __init__(self, ...):
+        self.session = requests.Session()
+
+    def get(self, path: str, **kwargs) -> requests.Response:
+        return self.session.get(f"{self.base_url}{path}", ...)
+```
+
+`requests.get(...)` каждый раз открывает новое соединение. `requests.Session()` переиспользует TCP-соединение и хранит cookies между вызовами.
+
+### 3. Фикстура как dependency injection
+
+Тест объявляет зависимость именем аргумента. pytest сам находит фикстуру с таким же именем и подставляет значение.
+
+```python
+def test_get_products(api_client):   # «мне нужен api_client»
+    ...
+```
+
+Тест не делает `ApiClient()` внутри себя. Это важно:
+
+- не дублировать setup в каждом тесте;
+- легко подменить клиент (другой URL, мок) без правки сценариев;
+- закрыть соединение один раз после всех тестов, а не забывать `close()` в каждом файле.
+
+### 4. HTTP-статус и бизнес-статус
+
+Особенность Automation Exercise: при ошибке сервер часто отвечает **HTTP 200**, а настоящий результат лежит в JSON-поле `responseCode`.
+
+Поэтому проверяют оба уровня:
+
+| Что | Пример | Смысл |
+|-----|--------|--------|
+| `response.status_code` | `200` | Транспорт: запрос дошёл, HTTP ок |
+| `body["responseCode"]` | `200` или `405` | Бизнес: операция разрешена или метод не поддерживается |
+| `body["message"]` | `"This request method is not supported."` | Текст ошибки API |
+
+Именно это показывает `test_post_products_not_supported`: POST на `/productsList` даёт HTTP 200 и `responseCode == 405`.
 
 ---
 
-## CI (GitHub Actions)
+## Что такое фикстура `api_client`
 
-После того как вы запушите репозиторий (практика из лекции), workflow [`.github/workflows/tests.yml`](.github/workflows/tests.yml):
+Фикстура — функция, которую pytest вызывает **за** тест и передаёт результат в аргумент теста.
 
-| Job | Команда |
-|-----|---------|
-| `lint` | `ruff check` + `ruff format --check` |
-| `api-tests` | `pytest -m api` (после успешного lint) |
+Она лежит в `tests/conftest.py`. pytest подхватывает этот файл автоматически: импортировать его в тестах не нужно.
 
-Badge (подставьте свой логин и имя репо):
-
-```markdown
-![Tests](https://github.com/<логин>/<репозиторий>/actions/workflows/tests.yml/badge.svg)
+```python
+@pytest.fixture(scope="session")
+def api_client():
+    client = ApiClient()   # setup: создать клиент
+    yield client           # отдать тестам
+    client.close()         # teardown: закрыть соединения
 ```
+
+Как это читается:
+
+1. **Имя** `api_client` — такое же, как аргумент в `def test_get_products(api_client)`.
+2. **`scope="session"`** — один экземпляр на весь прогон pytest, а не новый на каждый тест.
+3. **`yield`** — всё до `yield` выполняется до тестов, всё после — когда прогон закончился.
+
+Жизненный цикл при `pytest -v`:
+
+```text
+pytest стартует
+    → создаётся ApiClient()          # один раз
+    → внутри него requests.Session()
+    → test_get_products(api_client)
+    → test_post_products_not_supported(api_client)   # тот же клиент
+    → client.close()                 # после всех тестов
+pytest завершается
+```
+
+Без `scope="session"` (по умолчанию `function`) клиент создавался бы и закрывался **на каждый тест**. Для API это лишние соединения. Session-scope имеет смысл, пока тесты не портят общее состояние (не логинятся под разными пользователями в одной сессии без очистки).
+
+Другие scope, которые встретятся дальше: `function` (каждый тест), `class` (класс тестов), `module` (файл), `session` (весь прогон).
+
+---
+
+## Как создаётся сессия
+
+Здесь две разные «сессии» — их часто путают.
+
+### Pytest session
+
+Это **прогон тестов**: от команды `pytest` до финального отчёта. `scope="session"` привязан именно к нему. Фикстура живёт, пока жив этот прогон.
+
+### HTTP session (`requests.Session`)
+
+Это **постоянное HTTP-соединение** к серверу. Создаётся внутри клиента:
+
+```python
+class ApiClient:
+    def __init__(self, ...):
+        self.session = requests.Session()
+```
+
+Дальше `get` / `post` идут через `self.session`, а не через голый `requests.get`.
+
+Что даёт HTTP-сессия:
+
+- keep-alive — меньше рукопожатий TCP/TLS между тестами;
+- общие cookies — если позже появится логин, второй запрос увидит ту же авторизацию;
+- общие заголовки — их можно выставить один раз на `session.headers`.
+
+Закрытие:
+
+```python
+def close(self) -> None:
+    self.session.close()
+```
+
+`close()` вызывается в teardown фикстуры, после `yield`. Соединения не висят после окончания pytest.
+
+Связка целиком:
+
+```text
+pytest session (прогон)
+    └── фикстура api_client (scope="session")
+            └── ApiClient
+                    └── requests.Session()   # HTTP session
+                            ├── GET /productsList
+                            └── POST /productsList
+                    └── close()
+```
+
+Один прогон pytest → один `ApiClient` → одна HTTP-сессия → все запросы тестов.
+
+---
+
+## Что смотреть дальше
+
+Когда этот минимум станет привычным:
+
+- добавить `PUT` / `DELETE` в клиент и тесты на `/brandsList`;
+- вынести эндпоинты в сервис (`ProductsService.get_products()`), если путей станет много;
+- параметризовать поиск (`@pytest.mark.parametrize`);
+- типизировать JSON-ответ dataclass / pydantic, если проверки полей разрастутся.
