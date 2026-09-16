@@ -1,0 +1,59 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+env/
+.venv/
+ENV/
+
+# Python packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# pytest
+.pytest_cache/
+.cache/
+htmlcov/
+.coverage
+coverage.xml
+*.cover
+
+# Logs
+*.log
+
+# VSCode / Cursor — commit launch.json + settings.json, ignore the rest
+.vscode/*
+!.vscode/launch.json
+!.vscode/settings.json
+
+# JetBrains IDE
+.idea/
+
+# MacOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+# Environment variables — never commit secrets
+.env
+
+# Linters
+.ruff_cache/
+.mypy_cache/
+.pyright/
+
+# Test reports
+reports/
+allure-results/
+allure-report/
+report.html
+
+# Temporary files
+*.tmp
+*.temp
