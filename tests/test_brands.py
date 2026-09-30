@@ -7,3 +7,7 @@ def test_get_brands(api_client):
     data = response.json()
 
     assert len(data["brands"]) > 33
+
+#TODO: check that all brands are unique
+#TODO: check that all brands are valid
+#TODO: check that all brands are not empty
