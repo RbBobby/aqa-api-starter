@@ -5,9 +5,26 @@ def test_get_brands(api_client):
     assert response.reason == "OK"
 
     data = response.json()
+    brands = data["brands"]
 
-    assert len(data["brands"]) > 33
+    assert isinstance(brands, list)
+    assert len(brands) > 33
 
-#TODO: check that all brands are unique
-#TODO: check that all brands are valid
-#TODO: check that all brands are not empty
+    brand_ids = []
+
+    for brand in brands:
+        # Проверяем структуру и типы данных
+        assert isinstance(brand, dict)
+        assert "id" in brand
+        assert "brand" in brand
+        assert type(brand["id"]) is int
+        assert brand["id"] > 0
+        assert isinstance(brand["brand"], str)
+
+        # Проверяем, что название не пустое и не состоит из пробелов
+        assert brand["brand"].strip() != ""
+
+        brand_ids.append(brand["id"])
+
+    # Проверяем отсутствие повторяющихся id
+    assert len(brand_ids) == len(set(brand_ids))
