@@ -14,6 +14,9 @@ def test_get_brands(api_client):
 
     for brand in brands:
         # Проверяем структуру и типы данных
+
+        assert "brand" in brand
+        assert type(brand["id"]) is int
         assert isinstance(brand, dict)
         assert "id" in brand
         assert brand["id"] > 0
