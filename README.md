@@ -11,6 +11,14 @@ pip install -r requirements.txt
 pytest -v
 ```
 
+Результаты Allure пишутся в `allure-results/`. HTML-отчёт:
+
+```bash
+allure serve allure-results
+```
+
+Если команды `allure` нет: macOS — `brew install allure`, Windows — `scoop install allure`.
+
 Опционально переопределить URL и таймаут:
 
 ```bash
@@ -29,8 +37,8 @@ aqa-api-starter/
 ├── tests/
 │   ├── conftest.py        # фикстура api_client
 │   └── test_products.py   # сами тесты
-├── pytest.ini             # где искать тесты, откуда импортировать api
-└── requirements.txt       # pytest + requests
+├── pytest.ini             # где искать тесты, allure-results
+└── requirements.txt       # pytest + requests + allure-pytest
 ```
 
 Цепочка вызова:
