@@ -1,5 +1,5 @@
 import allure
-
+import pytest
 
 @allure.epic("API")
 @allure.feature("Products")
@@ -7,6 +7,7 @@ import allure
 @allure.title("Список товаров возвращается")
 @allure.severity(allure.severity_level.CRITICAL)
 @allure.tag("smoke", "products")
+@pytest.mark.api
 def test_get_products(api_client):
     with allure.step("Запросить список товаров"):
         response = api_client.get("/productsList")
@@ -24,6 +25,7 @@ def test_get_products(api_client):
 @allure.title("POST на список товаров не поддерживается")
 @allure.severity(allure.severity_level.NORMAL)
 @allure.tag("negative", "products")
+@pytest.mark.api
 def test_post_products_not_supported(api_client):
     with allure.step("Отправить POST /productsList"):
         response = api_client.post("/productsList")

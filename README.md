@@ -19,6 +19,35 @@ allure serve allure-results
 
 Если команды `allure` нет: macOS — `brew install allure`, Windows — `scoop install allure`.
 
+Только API или только UI:
+
+```bash
+pytest -m api -v
+pytest -m ui -v
+```
+
+---
+
+## GitHub Actions
+
+Пайплайн [`.github/workflows/tests.yml`](.github/workflows/tests.yml) запускается на push в `main`, на pull request и вручную.
+
+| Стадия | Job | Что делает |
+|--------|-----|------------|
+| 1 | Build + requirements | Ставит Python 3.11 и зависимости из `requirements.txt` |
+| 2 | API layer | `pytest -m api` — текущие тесты брендов и товаров |
+| 3 | UI layer | `pytest -m ui` — после успешного API; пока заглушка в `tests/ui/` |
+
+Стадии идут строго по порядку: если сломались зависимости, API не стартует; если красный API, UI не запускается. Allure-результаты каждой тестовой стадии сохраняются как artifact.
+
+После тестов job **Allure report** собирает HTML. На `main` отчёт публикуется на GitHub Pages:
+
+**https://rbbobby.github.io/aqa-api-starter/**
+
+Один раз в репозитории: **Settings → Pages → Source: GitHub Actions**. Если Pages ещё не включали, первый деплой может попросить подтвердить environment `github-pages`.
+
+Pull request отчёт на сайт не выкладывает (чтобы черновик не затирал `main`) — HTML лежит в artifact `allure-report`.
+
 Опционально переопределить URL и таймаут:
 
 ```bash

@@ -1,5 +1,5 @@
 import allure
-
+import pytest
 
 @allure.epic("API")
 @allure.feature("Brands")
@@ -7,6 +7,7 @@ import allure
 @allure.title("Список брендов возвращается и валиден")
 @allure.severity(allure.severity_level.CRITICAL)
 @allure.tag("smoke", "brands")
+@pytest.mark.api
 def test_get_brands(api_client):
     with allure.step("Запросить список брендов"):
         response = api_client.get("/brandsList")

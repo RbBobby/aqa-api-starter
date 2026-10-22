@@ -55,3 +55,13 @@ def api_client():
     client = AllureApiClient()
     yield client
     client.close()
+
+
+def pytest_collection_modifyitems(items):
+    for item in items:
+        if item.get_closest_marker("api") or item.get_closest_marker("ui"):
+            continue
+        if "ui" in item.path.parts:
+            item.add_marker(pytest.mark.ui)
+        else:
+            item.add_marker(pytest.mark.api)
