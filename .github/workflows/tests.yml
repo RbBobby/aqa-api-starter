@@ -192,7 +192,7 @@ jobs:
   pages:
     name: 5. GitHub Pages
     needs: allure
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.allure.result == 'success'
+    if: ${{ !cancelled() && github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && needs.allure.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       pages: write

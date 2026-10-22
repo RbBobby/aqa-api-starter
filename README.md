@@ -40,13 +40,18 @@ pytest -m ui -v
 
 Стадии идут строго по порядку: если сломались зависимости, API не стартует; если красный API, UI не запускается. Allure-результаты каждой тестовой стадии сохраняются как artifact.
 
-После тестов job **Allure report** собирает HTML. На `main` отчёт публикуется на GitHub Pages:
+После тестов job **Allure report** собирает HTML, job **GitHub Pages** пушит его в ветку `gh-pages`.
 
 **https://rbbobby.github.io/aqa-api-starter/**
 
-Один раз в репозитории: **Settings → Pages → Source: GitHub Actions**. Если Pages ещё не включали, первый деплой может попросить подтвердить environment `github-pages`.
+Пайплайн сам сайт не включает — у `GITHUB_TOKEN` нет такого права. Один раз в репозитории:
 
-Pull request отчёт на сайт не выкладывает (чтобы черновик не затирал `main`) — HTML лежит в artifact `allure-report`.
+1. Дождитесь зелёного прогона: в репозитории появится ветка `gh-pages`.
+2. **Settings → Pages → Build and deployment**.
+3. **Source:** Deploy from a branch.
+4. **Branch:** `gh-pages` / `/ (root)` → Save.
+
+Pull request на сайт не выкладывается — HTML лежит в artifact `allure-report`.
 
 Опционально переопределить URL и таймаут:
 
