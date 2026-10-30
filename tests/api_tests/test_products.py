@@ -10,6 +10,7 @@ import pytest
 @pytest.mark.api
 def test_get_products(api_client):
     with allure.step("Запросить список товаров"):
+        #ToDo изменить тест на использование сервиса ProductsService
         response = api_client.get("/productsList")
         body = response.json()
 
